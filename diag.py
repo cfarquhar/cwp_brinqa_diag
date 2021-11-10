@@ -228,6 +228,7 @@ if __name__ == "__main__":
         ("Deployed image scan reports (full)", "images", {}),
         ("Serverless scan reports (full)", "serverless", {}),
         ("Code repo scan reports (full)", "coderepos", {}),
+        ("Container scan reports (full)", "containers", {}),
     ]
 
     api = CwpApiProfiler(CWP_API, CWP_USER, CWP_PASSWORD)
