@@ -9,7 +9,7 @@ from random import randrange
 from statistics import mean
 
 # e.g. https://us-east1.cloud.twistlock.com/us-1-123456789
-CWP_API = f"{os.environ.get('CWP_CONSOLE_PATH')}/api/v1/"
+CWP_API = f"{os.environ.get('CWP_CONSOLE_PATH')}/api/v1"
 CWP_USER = os.environ.get("CWP_USER")
 CWP_PASSWORD = os.environ.get("CWP_PASSWORD")
 
@@ -42,6 +42,7 @@ class CwpApiProfiler:
         self.verify_tls = VERIFY_TLS
         self._details_csv = open(f"details-{int(time.time())}.csv", "w")
         self._details_csv_writer = csv.writer(self._details_csv)
+        self._debug_log = open(f"debug-{int(time.time())}.log", "w")
 
         # Avoid cluttering output if TLS verify is False
         if not self.verify_tls:
@@ -63,8 +64,13 @@ class CwpApiProfiler:
 
     def __del__(self):
         self._details_csv.close()
+        self._debug_log.close()
+
+    def _log(self, message):
+        self._debug_log.write(f"{time.strftime('%c')} | {message}\n")
 
     def _get_token(self):
+        self._log("_get_token | about to call requests.post to generate a token")
         body = {"username": self.user, "password": self.password}
         r = requests.post(
             f"{self.endpoint}/authenticate", json=body, verify=self.verify_tls
@@ -74,11 +80,14 @@ class CwpApiProfiler:
                 f"Unable to authenticate to {CWP_API} with provided credentials."
             )
         self.token = r.json()["token"]
+        self._log("_get_token | token seems to have been issued successfully\n")
 
     def _get_api(self, url, headers, params):
+        self._log(f"_get_api | about to call {url} with {params}")
         if SIMULATE_RANDOM_FAILURES:
             if randrange(1, 100) < 30:
                 url += "fail"
+        # time.sleep(120)
         start = time.perf_counter()
         r = requests.get(
             url,
@@ -179,6 +188,10 @@ class CwpApiProfiler:
         params["offset"] = 0
         headers = {"Authorization": f"Bearer {self.token}"}
 
+        self._log(
+            f"profile  | starting profile for {scenario_name} / {api_path} / {params}."
+        )
+
         while not finished and retries < RETRY_LIMIT:
             (request_time, r) = self._get_api(
                 url=f"{self.endpoint}/{api_path}", headers=headers, params=params
@@ -187,6 +200,9 @@ class CwpApiProfiler:
             try:
                 result_count = len(r.json())
             except JSONDecodeError:
+                self._log(
+                    "profile  | got JSONDecodeError after call to _get_api(). setting result_count = 0."
+                )
                 result_count = 0
 
             row = [
@@ -201,18 +217,33 @@ class CwpApiProfiler:
             self._details_csv_writer.writerow(row)
 
             if r.status_code == 401:
+                self._log(
+                    "profile  | got 401 response from _get_api(). calling _get_token() for a refresh."
+                )
                 self._get_token()
                 headers = {"Authorization": f"Bearer {self.token}"}
             elif r.status_code != 200:
+                self._log(
+                    f"profile  | got {r.status_code} from _get_api(). incrementing retries to {retries + 1}."
+                )
                 time.sleep(5)
                 retries += 1
             else:
                 retries = 0
                 if result_count < PAGE_SIZE:
+                    self._log(
+                        f"profile  | got 200 from _get_api().  result_count < PAGE_SIZE so we're done."
+                    )
                     finished = True
                 else:
                     params["offset"] += PAGE_SIZE
+                    self._log(
+                        f"profile  | got 200 from _get_api().  result_count >= PAGE_SIZE so setting offset to {params['offset']}."
+                    )
 
+        self._log(
+            f"profile  | scenario {scenario_name} completed.  generating summary.\n"
+        )
         summary = self._summarize(rows)
         self._print_summary(summary)
 
