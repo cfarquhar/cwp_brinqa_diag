@@ -252,13 +252,13 @@ if __name__ == "__main__":
 
     # (scenario name, API path, GET parameters)
     scenarios = [
-        ("Registry image scan reports (compact)", "registry", {"compact": "true"}),
-        ("Deployed image scan reports (compact)", "images", {"compact": "true"}),
-        ("Host scan reports (full)", "hosts", {}),
+        # ("Registry image scan reports (compact)", "registry", {"compact": "true"}),
+        # ("Deployed image scan reports (compact)", "images", {"compact": "true"}),
+        # ("Host scan reports (full)", "hosts", {}),
         ("Registry image scan reports (full)", "registry", {}),
         ("Deployed image scan reports (full)", "images", {}),
-        ("Serverless scan reports (full)", "serverless", {}),
-        ("Code repo scan reports (full)", "coderepos", {}),
+        # ("Serverless scan reports (full)", "serverless", {}),
+        # ("Code repo scan reports (full)", "coderepos", {}),
         ("Container scan reports (full)", "containers", {}),
     ]
 
