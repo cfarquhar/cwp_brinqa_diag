@@ -215,6 +215,7 @@ class CwpApiProfiler:
             ]
             rows.append(row)
             self._details_csv_writer.writerow(row)
+            self._details_csv.flush()
 
             if r.status_code == 401:
                 self._log(
